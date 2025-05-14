@@ -57,8 +57,7 @@ so , Here we Use Tun for Configuring VPN.
 4.  Set up iptables rules:
 
         sudo iptables -t nat -A POSTROUTING -o wlp2s0 -j MASQUERADE
-    
-   (iptables maintain the NAT configuration )
+(iptables maintain the NAT configuration )
                =>This sets up NAT (masquerading).
                =>All packets going out of your internet-facing interface wlp2s0 (like Wi-Fi) will have their source IP changed to your Server’s IP.
                =>'t' means 'table' . There are lot of tables .(we need only NAT)
@@ -71,7 +70,6 @@ so , Here we Use Tun for Configuring VPN.
     
         sudo iptables -A FORWARD -i tun0 -o wlp2s0 -j ACCEPT
     
-     
   =>It allows forwarding of packets from tun0 to wlp2s0.
               => It Let packets from the VPN (tun0) go out through the internet (wlp2s0).
               => 'j' - 'Jump' (Action).Tells what to do with the packet.
@@ -89,7 +87,7 @@ so , Here we Use Tun for Configuring VPN.
     
       sudo iptables -A FORWARD -i wlp2s0 -o tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT
 
-  => It allows return traffic to come back from the internet to the VPN client.
+   => It allows return traffic to come back from the internet to the VPN client.
               =>It checks if the packet is part of a connection that was already allowed (like a reply from a website).
               =>If traffic is coming from the internet (wlp2s0) and is part of a connection that started from the VPN (tun0), allow it.
   Server side finish. 

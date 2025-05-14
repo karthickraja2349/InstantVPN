@@ -1,4 +1,6 @@
-![after](https://github.com/user-attachments/assets/1e3754f0-3560-45d3-a368-57c5eefbbfc7)# VPN Server-Client Setup
+### Instant VPN
+
+# VPN Server-Client Setup
 
 This project demonstrates a basic VPN (Virtual Private Network) setup between a **Linux-based server** and an **Android client**, allowing secure communication over a private tunnel.
 

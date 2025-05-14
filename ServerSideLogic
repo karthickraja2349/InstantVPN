@@ -1,0 +1,192 @@
+//JAVA code
+//Some machines java doesnot work . But c file supports . It was also added after to the Java code
+
+import java.io.*;
+import java.net.*;
+
+
+
+public class VPNServer {
+    public static void main(String[] args) {
+        try {
+            // Bring the tun0 interface up
+            Process process = Runtime.getRuntime().exec("sudo ip link set tun0 up");
+            process.waitFor();
+
+            // Rest of your server code follows...
+            RandomAccessFile tun = new RandomAccessFile("/dev/net/tun", "rwd");
+
+            ServerSocket serverSocket = new ServerSocket(5555);
+            System.out.println("Waiting for VPN client to connect...");
+            Socket clientSocket = serverSocket.accept();
+            System.out.println("VPN client connected.");
+
+            InputStream clientIn = clientSocket.getInputStream();
+            OutputStream clientOut = clientSocket.getOutputStream();
+
+            InputStream tunIn = new FileInputStream(tun.getFD());
+            OutputStream tunOut = new FileOutputStream(tun.getFD());
+
+            Thread tunToClient = new Thread(() -> {
+                byte[] buffer = new byte[32767];
+                try {
+                    while (true) {
+                        int len = tunIn.read(buffer);
+                        if (len > 0) {
+                            clientOut.write(buffer, 0, len);
+                            clientOut.flush();
+                        }
+                    }
+                } catch (IOException e) {
+                    System.err.println("TUN -> Client error: " + e.getMessage());
+                }
+            });
+
+            Thread clientToTun = new Thread(() -> {
+                byte[] buffer = new byte[32767];
+                try {
+                    while (true) {
+                        int len = clientIn.read(buffer);
+                        if (len == -1) break;
+                        tunOut.write(buffer, 0, len);
+                        tunOut.flush();
+                    }
+                } catch (IOException e) {
+                    System.err.println("Client -> TUN error: " + e.getMessage());
+                }
+            });
+
+            tunToClient.start();
+            clientToTun.start();
+
+            tunToClient.join();
+            clientToTun.join();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/if.h>
+#include <linux/if_tun.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+int tun_alloc(char *dev) {
+    struct ifreq ifr;
+    int fd, err;
+
+    if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
+        perror("Opening /dev/net/tun");
+        return fd;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+
+    if (*dev)
+        strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+
+    if ((err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0) {
+        perror("ioctl(TUNSETIFF)");
+        close(fd);
+        return err;
+    }
+
+    strcpy(dev, ifr.ifr_name);
+    return fd;
+}
+
+int main() {
+    char tun_name[IFNAMSIZ] = "tun0";
+    int tun_fd = tun_alloc(tun_name);
+
+    if (tun_fd < 0) {
+        fprintf(stderr, "Error allocating TUN device\n");
+        exit(1);
+    }
+
+    printf("TUN device %s opened.\n", tun_name);
+
+    // Set up the server socket
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0) {
+        perror("Socket creation failed");
+        exit(1);
+    }
+
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(5555);
+
+    if (bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Bind failed");
+        exit(1);
+    }
+
+    if (listen(server_fd, 5) < 0) {
+        perror("Listen failed");
+        exit(1);
+    }
+
+    printf("Waiting for VPN client to connect...\n");
+    int client_fd = accept(server_fd, NULL, NULL);
+    if (client_fd < 0) {
+        perror("Accept failed");
+        exit(1);
+    }
+
+    printf("VPN client connected.\n");
+
+    // Buffers to transfer data
+    char buffer[32767];
+    int bytes_read, bytes_written;
+
+    while (1) {
+        // Read from TUN device and send to the client
+        bytes_read = read(tun_fd, buffer, sizeof(buffer));
+        if (bytes_read < 0) {
+            perror("Read from TUN failed");
+            break;
+        }
+        if (bytes_read > 0) {
+            bytes_written = send(client_fd, buffer, bytes_read, 0);
+            if (bytes_written < 0) {
+                perror("Send to client failed");
+                break;
+            }
+        }
+
+        // Read from client and write to TUN device
+        bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
+        if (bytes_read < 0) {
+            perror("Receive from client failed");
+            break;
+        }
+        if (bytes_read > 0) {
+            bytes_written = write(tun_fd, buffer, bytes_read);
+            if (bytes_written < 0) {
+                perror("Write to TUN failed");
+                break;
+            }
+        }
+    }
+
+    close(client_fd);
+    close(server_fd);
+    close(tun_fd);
+
+    return 0;
+}
+

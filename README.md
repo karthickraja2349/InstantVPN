@@ -44,21 +44,21 @@ so , Here we Use Tun for Configuring VPN.
 
 1. **Create a `tun0` interface**:  (tun is already present / configured in the kernal so don't worry about it)
 
-      sudo ip tuntap add dev tun0 mode tun
-      sudo ip addr add 10.8.0.1/24 dev tun0
-      sudo ip link set dev tun0 up
+       sudo ip tuntap add dev tun0 mode tun
+       sudo ip addr add 10.8.0.1/24 dev tun0
+       sudo ip link set dev tun0 up
    
 2.  Enable IP forwarding:
 
-      sudo sysctl -w net.ipv4.ip_forward=1
+        sudo sysctl -w net.ipv4.ip_forward=1
     
-        (w means write)
+   (w means write)
 
 4.  Set up iptables rules:
 
-      sudo iptables -t nat -A POSTROUTING -o wlp2s0 -j MASQUERADE
+        sudo iptables -t nat -A POSTROUTING -o wlp2s0 -j MASQUERADE
     
-         (iptables maintain the NAT configuration )
+   (iptables maintain the NAT configuration )
                =>This sets up NAT (masquerading).
                =>All packets going out of your internet-facing interface wlp2s0 (like Wi-Fi) will have their source IP changed to your Server’s IP.
                =>'t' means 'table' . There are lot of tables .(we need only NAT)
@@ -69,9 +69,10 @@ so , Here we Use Tun for Configuring VPN.
                             raw: For pre-processing.
                =>'A' means 'Append' .Add this rule to the end of the specified chain
     
-      sudo iptables -A FORWARD -i tun0 -o wlp2s0 -j ACCEPT
+        sudo iptables -A FORWARD -i tun0 -o wlp2s0 -j ACCEPT
     
-              =>It allows forwarding of packets from tun0 to wlp2s0.
+     
+  =>It allows forwarding of packets from tun0 to wlp2s0.
               => It Let packets from the VPN (tun0) go out through the internet (wlp2s0).
               => 'j' - 'Jump' (Action).Tells what to do with the packet.
                       -> j ACCEPT means allow the packet.
@@ -88,7 +89,7 @@ so , Here we Use Tun for Configuring VPN.
     
       sudo iptables -A FORWARD -i wlp2s0 -o tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT
 
-              => It allows return traffic to come back from the internet to the VPN client.
+  => It allows return traffic to come back from the internet to the VPN client.
               =>It checks if the packet is part of a connection that was already allowed (like a reply from a website).
               =>If traffic is coming from the internet (wlp2s0) and is part of a connection that started from the VPN (tun0), allow it.
   Server side finish. 

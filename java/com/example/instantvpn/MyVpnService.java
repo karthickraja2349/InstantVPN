@@ -5,8 +5,13 @@ import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.widget.Toast;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.Socket;
+
 
 public class MyVpnService extends VpnService {
 

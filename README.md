@@ -31,7 +31,7 @@ Application Layer
 
 we use TUNTAP Interface for configuring VPN .
 
-Tap - deals with layer 2 
+Tap - deals with layer 2 ,
 Tun - deals with layer 3 (network)
 
 so , Here we Use Tun for Configuring VPN.
